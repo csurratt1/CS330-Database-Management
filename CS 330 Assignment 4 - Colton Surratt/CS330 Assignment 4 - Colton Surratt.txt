@@ -1,0 +1,103 @@
+SELECT E.Fname, E.Lname
+FROM EMPLOYEE E
+JOIN WORKS_ON W ON E.Ssn = W.Essn
+JOIN PROJECT P ON W.Pno = P.Pnumber
+WHERE E.Dno = 5
+  AND P.Pname = 'ProductX'
+  AND W.Hours > 10;
+
+-- b. List the names of all employees who have a dependent with the same first name as themselves.
+SELECT E.Fname, E.Lname
+FROM EMPLOYEE E
+JOIN DEPENDENT D ON E.Ssn = D.Essn
+WHERE E.Fname = D.Dependent_name;
+
+-- c. Find the names of all employees who are directly supervised by 'Franklin Wong'.
+SELECT E.Fname, E.Lname
+FROM EMPLOYEE E
+JOIN EMPLOYEE S ON E.Super_ssn = S.Ssn
+WHERE S.Fname = 'Franklin' AND S.Lname = 'Wong';
+
+-- d. For each project, list the project name and the total hours per week (by all employees) 
+-- spent on that project.
+SELECT P.Pname, SUM(W.Hours) AS TotalHours
+FROM PROJECT P
+LEFT JOIN WORKS_ON W ON P.Pnumber = W.Pno
+GROUP BY P.Pnumber, P.Pname;
+
+-- e. Retrieve the names of all employees who work on every project.
+SELECT E.Fname, E.Lname
+FROM EMPLOYEE E
+WHERE NOT EXISTS (
+    SELECT P.Pnumber
+    FROM PROJECT P
+    WHERE NOT EXISTS (
+        SELECT W.Essn
+        FROM WORKS_ON W
+        WHERE W.Essn = E.Ssn AND W.Pno = P.Pnumber
+    )
+);
+
+-- Alternative approach for (e)
+SELECT E.Fname, E.Lname
+FROM EMPLOYEE E
+WHERE (SELECT COUNT(DISTINCT Pno) 
+       FROM WORKS_ON 
+       WHERE Essn = E.Ssn) = (SELECT COUNT(*) FROM PROJECT);
+
+-- f. Retrieve the names of all employees who do not work on any project.
+SELECT E.Fname, E.Lname
+FROM EMPLOYEE E
+WHERE NOT EXISTS (
+    SELECT * 
+    FROM WORKS_ON W
+    WHERE W.Essn = E.Ssn
+);
+
+-- Alternative approach for (f)
+SELECT E.Fname, E.Lname
+FROM EMPLOYEE E
+LEFT JOIN WORKS_ON W ON E.Ssn = W.Essn
+WHERE W.Essn IS NULL;
+
+-- g. For each department, retrieve the department name and the average salary of all 
+-- employees working in that department.
+SELECT D.Dname, AVG(E.Salary) AS AverageSalary
+FROM DEPARTMENT D
+LEFT JOIN EMPLOYEE E ON D.Dnumber = E.Dno
+GROUP BY D.Dnumber, D.Dname;
+
+-- h. Retrieve the average salary of all female employees.
+SELECT AVG(Salary) AS AverageFemaleEmployeeSalary
+FROM EMPLOYEE
+WHERE Sex = 'F';
+
+-- i. Find the names and addresses of all employees who work on at least one project 
+-- located in Houston but whose department has no location in Houston.
+SELECT DISTINCT E.Fname, E.Lname, E.Address
+FROM EMPLOYEE E
+JOIN WORKS_ON W ON E.Ssn = W.Essn
+JOIN PROJECT P ON W.Pno = P.Pnumber
+WHERE P.Plocation = 'Houston'
+  AND E.Dno NOT IN (
+      SELECT DL.Dnumber
+      FROM DEPT_LOCATIONS DL
+      WHERE DL.Dlocation = 'Houston'
+  );
+
+-- j. List the last names of all department managers who have no dependents.
+SELECT DISTINCT E.Lname
+FROM EMPLOYEE E
+JOIN DEPARTMENT D ON E.Ssn = D.Mgr_ssn
+WHERE NOT EXISTS (
+    SELECT *
+    FROM DEPENDENT DEP
+    WHERE DEP.Essn = E.Ssn
+);
+
+-- Alternative approach for (j)
+SELECT DISTINCT E.Lname
+FROM EMPLOYEE E
+JOIN DEPARTMENT D ON E.Ssn = D.Mgr_ssn
+LEFT JOIN DEPENDENT DEP ON E.Ssn = DEP.Essn
+WHERE DEP.Essn IS NULL;
